@@ -8,7 +8,9 @@
     "start": "node dist/server.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:deploy": "prisma migrate deploy",
+    "start:prod": "prisma migrate deploy && node dist/server.js"
   },
   "dependencies": {
     "@fastify/cors": "^9.0.1",
