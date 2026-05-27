@@ -33,9 +33,13 @@ const purchasesRoutes: FastifyPluginAsync = async (app) => {
   app.patch('/:id', auth, async (req, reply) => {
     const { id } = req.params as any
     const { companyId } = req.user as any
-    const { status } = req.body as any
-    await prisma.purchase.updateMany({ where: { id, companyId }, data: { status } })
-    return reply.send({ ok: true })
+    const data = req.body as any
+
+    const exists = await prisma.purchase.findFirst({ where: { id, companyId } })
+    if (!exists) return reply.status(404).send({ error: 'Compra não encontrada' })
+
+    const purchase = await prisma.purchase.update({ where: { id }, data })
+    return reply.send(purchase)
   })
 }
 

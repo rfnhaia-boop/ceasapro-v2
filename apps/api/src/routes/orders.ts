@@ -60,9 +60,14 @@ const ordersRoutes: FastifyPluginAsync = async (app) => {
     const { companyId } = req.user as any
     const data = req.body as any
 
-    const order = await prisma.order.updateMany({
-      where: { id, companyId },
+    // Verificar que pertence à empresa antes de atualizar
+    const exists = await prisma.order.findFirst({ where: { id, companyId } })
+    if (!exists) return reply.status(404).send({ error: 'Pedido não encontrado' })
+
+    const order = await prisma.order.update({
+      where: { id },
       data,
+      include: { blocks: true, driver: { select: { id: true, name: true } } },
     })
     return reply.send(order)
   })

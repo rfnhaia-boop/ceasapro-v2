@@ -36,18 +36,22 @@ const blocksRoutes: FastifyPluginAsync = async (app) => {
     const { companyId } = req.user as any
     const data = req.body as any
 
-    const block = await prisma.orderBlock.updateMany({
-      where: { id, companyId },
+    // Verificar que pertence à empresa
+    const exists = await prisma.orderBlock.findFirst({ where: { id, companyId } })
+    if (!exists) return reply.status(404).send({ error: 'Bloco não encontrado' })
+
+    const block = await prisma.orderBlock.update({
+      where: { id },
       data,
+      include: { picker: { select: { id: true, name: true } }, order: true },
     })
 
-    // Verificar se todos os blocos do pedido estão completos
-    const updatedBlock = await prisma.orderBlock.findUnique({ where: { id } })
-    if (updatedBlock?.status === 'COMPLETED') {
-      const allBlocks = await prisma.orderBlock.findMany({ where: { orderId: updatedBlock.orderId } })
+    // Verificar se todos os blocos do pedido estão completos → avançar pedido para READY
+    if (block.status === 'COMPLETED') {
+      const allBlocks = await prisma.orderBlock.findMany({ where: { orderId: block.orderId } })
       const allDone = allBlocks.every(b => b.status === 'COMPLETED')
       if (allDone) {
-        await prisma.order.update({ where: { id: updatedBlock.orderId }, data: { status: 'READY' } })
+        await prisma.order.update({ where: { id: block.orderId }, data: { status: 'READY' } })
       }
     }
 
