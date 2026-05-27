@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  avatar      String?
+  role        Role     @default(PICKER)
+  googleId    String?  @unique
+  createdAt   DateTime @default(now())
+
+  company     Company? @relation(fields: [companyId], references: [id])
+  companyId   String?
+
+  orders      Order[]
+  pickedBlocks OrderBlock[]
+  deliveries  Order[]  @relation("DriverOrders")
+}
+
+enum Role {
+  ADMIN
+  PICKER
+  DRIVER
+}
+
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  inviteCode  String   @unique @default(cuid())
+  createdAt   DateTime @default(now())
+
+  users       User[]
+  orders      Order[]
+  purchases   Purchase[]
+  invites     Invite[]
+}
+
+model Invite {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  role      Role
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  clientName          String
+  originalText        String?
+  status              OrderStatus @default(PENDING)
+  nfNumber            String?
+  deliveryNotes       String?
+  deliveryPhotos      String[]
+  deliveryStartedAt   DateTime?
+  deliveryCompletedAt DateTime?
+  createdAt           DateTime    @default(now())
+
+  company             Company     @relation(fields: [companyId], references: [id])
+  companyId           String
+
+  createdBy           User        @relation(fields: [createdById], references: [id])
+  createdById         String
+
+  driver              User?       @relation("DriverOrders", fields: [driverId], references: [id])
+  driverId            String?
+
+  blocks              OrderBlock[]
+}
+
+enum OrderStatus {
+  PENDING
+  PICKING
+  READY
+  DELIVERED
+}
+
+model OrderBlock {
+  id           String      @id @default(cuid())
+  supplierName String
+  clientName   String
+  status       BlockStatus @default(PENDING)
+  items        Json
+  photos       String[]
+  arrivedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime    @default(now())
+
+  order        Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId      String
+
+  companyId    String
+
+  picker       User?       @relation(fields: [pickerId], references: [id])
+  pickerId     String?
+}
+
+enum BlockStatus {
+  PENDING
+  PICKING
+  COMPLETED
+}
+
+model Purchase {
+  id           String         @id @default(cuid())
+  originalText String?
+  status       PurchaseStatus @default(RECEIVING)
+  destinations Json
+  createdAt    DateTime       @default(now())
+
+  company      Company        @relation(fields: [companyId], references: [id])
+  companyId    String
+
+  createdById  String
+}
+
+enum PurchaseStatus {
+  RECEIVING
+  ARRIVED
+  SEPARATED
+  COMPLETED
+}
