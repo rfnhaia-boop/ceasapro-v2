@@ -2,13 +2,25 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import jwt from '@fastify/jwt'
 import { PrismaClient } from '@prisma/client'
+import authenticate from './plugins/authenticate'
 
 export const prisma = new PrismaClient()
 
 const app = Fastify({ logger: true })
 
-app.register(cors, { origin: process.env.WEB_URL || 'http://localhost:3000' })
+const allowedOrigins = [
+  process.env.WEB_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+]
+app.register(cors, {
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
+    cb(new Error('Not allowed by CORS'), false)
+  },
+  credentials: true,
+})
 app.register(jwt, { secret: process.env.JWT_SECRET || 'dev-secret-change-in-prod' })
+app.register(authenticate)
 
 // Routes
 import authRoutes from './routes/auth'

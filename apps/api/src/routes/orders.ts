@@ -64,9 +64,18 @@ const ordersRoutes: FastifyPluginAsync = async (app) => {
     const exists = await prisma.order.findFirst({ where: { id, companyId } })
     if (!exists) return reply.status(404).send({ error: 'Pedido não encontrado' })
 
+    // Aceitar apenas campos escalares — nunca campos de relação
+    const { status, nfNumber, deliveryNotes, driverId, deliveryPhotos } = data
+    const updateData: any = {}
+    if (status !== undefined) updateData.status = status
+    if (nfNumber !== undefined) updateData.nfNumber = nfNumber
+    if (deliveryNotes !== undefined) updateData.deliveryNotes = deliveryNotes
+    if (driverId !== undefined) updateData.driverId = driverId
+    if (deliveryPhotos !== undefined) updateData.deliveryPhotos = deliveryPhotos
+
     const order = await prisma.order.update({
       where: { id },
-      data,
+      data: updateData,
       include: { blocks: true, driver: { select: { id: true, name: true } } },
     })
     return reply.send(order)

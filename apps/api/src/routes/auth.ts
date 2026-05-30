@@ -76,6 +76,27 @@ const authRoutes: FastifyPluginAsync = async (app) => {
     if (!user) return reply.status(404).send({ error: 'Usuário não encontrado' })
     return reply.send(user)
   })
+
+  // Join via sessão já autenticada (usuário logado aceita convite)
+  app.post('/join-session', { onRequest: [app.authenticate] }, async (req, reply) => {
+    const { userId } = req.user as any
+    const { code } = req.body as any
+
+    if (!code) return reply.status(400).send({ error: 'Código obrigatório' })
+
+    const invite = await prisma.invite.findUnique({ where: { code: String(code).toUpperCase() } })
+    if (!invite || invite.used) {
+      return reply.status(400).send({ error: 'Convite inválido ou já utilizado' })
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { role: invite.role, companyId: invite.companyId },
+    })
+    await prisma.invite.update({ where: { id: invite.id }, data: { used: true } })
+
+    return reply.send({ ok: true, message: 'Empresa associada com sucesso' })
+  })
 }
 
 // Middleware de autenticação global

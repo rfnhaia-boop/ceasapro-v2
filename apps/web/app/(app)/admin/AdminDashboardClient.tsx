@@ -483,7 +483,7 @@ export default function AdminDashboardClient({ initialOrders, company, initialTe
                         <div key={i} className="bg-[#1a1d24] rounded-2xl border border-slate-800 overflow-hidden">
                           <div className="bg-[#13161c] px-5 py-4 border-b border-slate-800 flex items-center gap-3">
                             <div className="bg-sky-950 rounded-lg p-1.5 border border-sky-900/50"><Truck className="w-4 h-4 text-sky-500" /></div>
-                            <h3 className="font-bold text-white text-sm">{dest.name}</h3>
+                            <h3 className="font-bold text-white text-sm">{dest.clientName || dest.name}</h3>
                           </div>
                           <ul className="divide-y divide-slate-800/50 px-5 py-2">
                             {dest.items?.map((item: any, j: number) => (

@@ -16,13 +16,24 @@ const aiRoutes: FastifyPluginAsync = async (app) => {
           type: 'OBJECT' as any,
           properties: {
             supplierName: { type: 'STRING' as any },
-            items: { type: 'ARRAY' as any, items: { type: 'OBJECT' as any, properties: { name: { type: 'STRING' as any }, quantity: { type: 'STRING' as any } }, required: ['name', 'quantity'] } }
+            items: {
+              type: 'ARRAY' as any,
+              items: {
+                type: 'OBJECT' as any,
+                properties: {
+                  name: { type: 'STRING' as any },
+                  quantity: { type: 'STRING' as any },
+                  unit: { type: 'STRING' as any },
+                },
+                required: ['name', 'quantity'],
+              },
+            },
           },
-          required: ['supplierName', 'items']
-        }
-      }
+          required: ['supplierName', 'items'],
+        },
+      },
     },
-    required: ['clientName', 'blocks']
+    required: ['clientName', 'blocks'],
   } : {
     type: 'OBJECT' as any,
     properties: {
@@ -31,14 +42,26 @@ const aiRoutes: FastifyPluginAsync = async (app) => {
         items: {
           type: 'OBJECT' as any,
           properties: {
-            name: { type: 'STRING' as any },
-            items: { type: 'ARRAY' as any, items: { type: 'OBJECT' as any, properties: { supplier: { type: 'STRING' as any }, name: { type: 'STRING' as any }, quantity: { type: 'STRING' as any } }, required: ['supplier', 'name', 'quantity'] } }
+            clientName: { type: 'STRING' as any },
+            items: {
+              type: 'ARRAY' as any,
+              items: {
+                type: 'OBJECT' as any,
+                properties: {
+                  supplier: { type: 'STRING' as any },
+                  name: { type: 'STRING' as any },
+                  quantity: { type: 'STRING' as any },
+                  unit: { type: 'STRING' as any },
+                },
+                required: ['supplier', 'name', 'quantity'],
+              },
+            },
           },
-          required: ['name', 'items']
-        }
-      }
+          required: ['clientName', 'items'],
+        },
+      },
     },
-    required: ['destinations']
+    required: ['destinations'],
   }
 
   // Parse lista de venda
@@ -46,12 +69,17 @@ const aiRoutes: FastifyPluginAsync = async (app) => {
     const { text } = req.body as any
     if (!text) return reply.status(400).send({ error: 'text obrigatório' })
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: `Parse this WhatsApp grocery list into JSON. Items grouped by supplier in parentheses (e.g. (MAURO)). Extract clientName from headers.\n\n${text}` }] }],
-      config: { responseMimeType: 'application/json', responseSchema: schema('list') },
-    })
-    return reply.send(JSON.parse(response.text!))
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: `Parse this WhatsApp grocery order list into JSON. Items are grouped by supplier in parentheses (e.g. (MAURO)). Extract the client name from the header line. Include unit of measure when present (kg, cx, fardo, etc).\n\n${text}` }] }],
+        config: { responseMimeType: 'application/json', responseSchema: schema('list') },
+      })
+      if (!response.text) return reply.status(500).send({ error: 'IA não retornou resposta' })
+      return reply.send(JSON.parse(response.text))
+    } catch (e: any) {
+      return reply.status(500).send({ error: e.message || 'Erro ao processar com IA' })
+    }
   })
 
   // Parse lista de compra
@@ -59,12 +87,17 @@ const aiRoutes: FastifyPluginAsync = async (app) => {
     const { text } = req.body as any
     if (!text) return reply.status(400).send({ error: 'text obrigatório' })
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: `Parse this purchase list into JSON destinations/locations with items and suppliers.\n\n${text}` }] }],
-      config: { responseMimeType: 'application/json', responseSchema: schema('purchase') },
-    })
-    return reply.send(JSON.parse(response.text!))
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: `Parse this purchase/buying list into JSON destinations. Each destination has a clientName and a list of items with their supplier, name, quantity and unit. Group items by destination/client.\n\n${text}` }] }],
+        config: { responseMimeType: 'application/json', responseSchema: schema('purchase') },
+      })
+      if (!response.text) return reply.status(500).send({ error: 'IA não retornou resposta' })
+      return reply.send(JSON.parse(response.text))
+    } catch (e: any) {
+      return reply.status(500).send({ error: e.message || 'Erro ao processar com IA' })
+    }
   })
 }
 
